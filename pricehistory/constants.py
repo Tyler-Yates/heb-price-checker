@@ -27,16 +27,16 @@ PRODUCTS_QUERY = """
             records {
                 id
                 displayName
-                
+
                 productImageUrls {
                     size
                     url
                 }
-                
+
                 bestAvailable
                 onAd
                 isNew
-        
+
                 isComboLoco
                 deal
                 pricedByWeight
@@ -77,3 +77,9 @@ PRODUCTS_QUERY = """
         }
     }
 """
+
+# Need to replace strings:
+# - username
+# - password
+# - host
+DB_CONNECTION_STRING = "mongodb+srv://%s:%s@%s/?retryWrites=true&w=majority"
