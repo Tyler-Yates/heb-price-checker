@@ -38,6 +38,8 @@ class DBClient:
         self._ensure_category_exists(category_id, category_display_name)
         self._ensure_product_exists(price_document, product_display_name, category_id)
 
+        # TODO only save to database if the price has changed
+
         self.prices_collection.update_one(
             filter={"product_id": price_document.product_id, "start_date": price_document.start_date},
             update={"$set": dataclasses.asdict(price_document)},
