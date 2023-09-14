@@ -6,9 +6,12 @@ from typing import Optional, List
 from gql import Client, gql
 from gql.transport.aiohttp import AIOHTTPTransport
 
+from .data.category_document import CategoryDocument
+from .data.price_container import PriceContainer
 from .data.price_document import PriceDocument
 from pricehistory.constants import PRODUCTS_QUERY, MAX_SLEEP_SECONDS, MIN_SLEEP_SECONDS
 from pricehistory.db_client import DBClient
+from .data.product_document import ProductDocument
 
 
 class SourceClient:
@@ -49,12 +52,20 @@ class SourceClient:
         return None
 
     def _process_records(self, records: dict, category_id: int, category_display_name: str):
+        price_containers = []
         for record in records:
             price_cents = self._get_price_cents(record)
-            price_document = PriceDocument(product_id=int(record["id"]), price_cents=price_cents, start_date=self.today)
-            product_display_name = record["displayName"]
+            product_id = int(record["id"])
+            price_document = PriceDocument(product_id=product_id, price_cents=price_cents, start_date=self.today)
 
-            self.db_client.save_product_price(price_document, product_display_name, category_id, category_display_name)
+            product_display_name = record["displayName"]
+            product_document = ProductDocument(id=product_id, display_name=product_display_name, category=category_id)
+
+            price_container = PriceContainer(product_document=product_document, price_document=price_document)
+            price_containers.append(price_container)
+
+        category_document = CategoryDocument(id=category_id, display_name=category_display_name)
+        self.db_client.save_product_prices(price_containers=price_containers, category_document=category_document)
 
     def _fetch_category_page(self, category_id: int, after: str = None) -> Optional[str]:
         """

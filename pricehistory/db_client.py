@@ -1,13 +1,13 @@
 import dataclasses
+from typing import List
 
 import pymongo
-from pymongo import MongoClient
+from pymongo import MongoClient, UpdateOne
 from pymongo.collection import Collection
 from pymongo.server_api import ServerApi
 
 from .data.category_document import CategoryDocument
-from .data.price_document import PriceDocument
-from .data.product_document import ProductDocument
+from .data.price_container import PriceContainer
 
 
 class DBClient:
@@ -30,36 +30,63 @@ class DBClient:
         # Indexes
         self.products_collection.create_index([("id", pymongo.ASCENDING)], unique=True)
         self.categories_collection.create_index([("id", pymongo.ASCENDING)], unique=True)
-        self.categories_collection.create_index([("product_id", pymongo.ASCENDING)], unique=False)
-
-    def save_product_price(
-        self, price_document: PriceDocument, product_display_name: str, category_id: int, category_display_name: str
-    ):
-        self._ensure_category_exists(category_id, category_display_name)
-        self._ensure_product_exists(price_document, product_display_name, category_id)
-
-        # TODO only save to database if the price has changed
-
-        self.prices_collection.update_one(
-            filter={"product_id": price_document.product_id, "start_date": price_document.start_date},
-            update={"$set": dataclasses.asdict(price_document)},
-            upsert=True,
+        self.prices_collection.create_index(
+            [("product_id", pymongo.ASCENDING), ("start_date", pymongo.DESCENDING)], unique=False
         )
 
-        print(f"Upserted price document {price_document}")
+    def save_product_prices(self, price_containers: List[PriceContainer], category_document: CategoryDocument):
+        # Ensure we have a document for the category
+        self._ensure_category_exists(category_document)
 
-    def _ensure_product_exists(self, price_document: PriceDocument, product_display_name: str, category_id: int):
-        product_document = ProductDocument(
-            id=price_document.product_id, display_name=product_display_name, category=category_id
-        )
+        # Ensure we have a document for each product
+        self._ensure_products_exist(price_containers)
 
-        self.products_collection.update_one(
-            filter={"id": price_document.product_id}, update={"$set": dataclasses.asdict(product_document)}, upsert=True
-        )
+        # Save all the prices to the database
+        self._ensure_prices_exist(price_containers)
 
-    def _ensure_category_exists(self, category_id: int, category_display_name: str):
-        category_document = CategoryDocument(id=category_id, display_name=category_display_name)
+    def _ensure_products_exist(self, price_containers: List[PriceContainer]):
+        operations = []
+        for price_container in price_containers:
+            product_document = price_container.product_document
+            operations.append(
+                UpdateOne(
+                    filter={"id": product_document.id},
+                    update={"$set": dataclasses.asdict(product_document)},
+                    upsert=True,
+                )
+            )
 
+        result = self.products_collection.bulk_write(operations)
+        print(f"Upserted {result.upserted_count} product documents")
+
+    def _ensure_prices_exist(self, price_containers: List[PriceContainer]):
+        # Determine which price documents actually need to be saved
+        operations = []
+        for price_container in price_containers:
+            price_document = price_container.price_document
+
+            most_recent_price_document = self.prices_collection.find_one(
+                filter={"product_id": price_document.product_id}, sort=[("start_date", pymongo.DESCENDING)]
+            )
+
+            if most_recent_price_document:
+                most_recent_price = most_recent_price_document["price_cents"]
+                if most_recent_price == price_document.price_cents:
+                    print(f"Skipping update for product {price_document.product_id} as the price is unchanged")
+                    continue
+
+            print(f"Updating price for product {price_document.product_id}")
+            operation = UpdateOne(
+                filter={"product_id": price_document.product_id, "start_date": price_document.start_date},
+                update={"$set": dataclasses.asdict(price_document)},
+                upsert=True,
+            )
+            operations.append(operation)
+
+        result = self.prices_collection.bulk_write(operations)
+        print(f"Upserted {result.upserted_count} price documents")
+
+    def _ensure_category_exists(self, category_document: CategoryDocument):
         self.categories_collection.update_one(
             filter={"id": category_document.id}, update={"$set": dataclasses.asdict(category_document)}, upsert=True
         )
