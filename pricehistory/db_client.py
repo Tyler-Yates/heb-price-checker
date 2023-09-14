@@ -29,6 +29,7 @@ class DBClient:
 
         # Indexes
         self.products_collection.create_index([("id", pymongo.ASCENDING)], unique=True)
+        self.products_collection.create_index([("display_name", pymongo.TEXT)])
         self.categories_collection.create_index([("id", pymongo.ASCENDING)], unique=True)
         self.prices_collection.create_index(
             [("product_id", pymongo.ASCENDING), ("start_date", pymongo.DESCENDING)], unique=False
