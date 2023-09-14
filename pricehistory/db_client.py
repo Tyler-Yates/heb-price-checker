@@ -62,7 +62,7 @@ class DBClient:
             return
 
         result = self.products_collection.bulk_write(operations)
-        print(f"Upserted {result.upserted_count} product documents")
+        print(f"Upserted/Modified {result.upserted_count + result.modified_count} product documents")
 
     def _ensure_prices_exist(self, price_containers: List[PriceContainer]):
         # Determine which price documents actually need to be saved

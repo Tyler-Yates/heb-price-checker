@@ -67,6 +67,7 @@ PRODUCTS_QUERY = """
                         }
                     }
                     productAvailability
+                    customerFriendlySize
                     skuPrice {
                         listPrice {
                             displayName

@@ -53,6 +53,14 @@ class SourceClient:
 
         return None
 
+    @staticmethod
+    def _get_product_size(record: dict) -> str:
+        for sku in record["SKUs"]:
+            if "customerFriendlySize" in sku:
+                return sku["customerFriendlySize"]
+
+        return ""
+
     def _process_records(self, records: dict, category_id: int, category_display_name: str):
         price_containers = []
         for record in records:
@@ -61,6 +69,12 @@ class SourceClient:
             price_document = PriceDocument(product_id=product_id, price_cents=price_cents, start_date=self.today)
 
             product_display_name = record["displayName"]
+
+            # Some products share the same display name and only differ by size
+            product_size = self._get_product_size(record)
+            if product_size and product_size.lower() != "each":
+                product_display_name += f" ({product_size})"
+
             product_document = ProductDocument(id=product_id, display_name=product_display_name, category=category_id)
 
             price_container = PriceContainer(product_document=product_document, price_document=price_document)
