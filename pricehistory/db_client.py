@@ -56,6 +56,10 @@ class DBClient:
                 )
             )
 
+        if not operations:
+            print("Upserted 0 product documents")
+            return
+
         result = self.products_collection.bulk_write(operations)
         print(f"Upserted {result.upserted_count} product documents")
 
@@ -82,6 +86,10 @@ class DBClient:
                 upsert=True,
             )
             operations.append(operation)
+
+        if not operations:
+            print("Upserted 0 price documents")
+            return
 
         result = self.prices_collection.bulk_write(operations)
         print(f"Upserted {result.upserted_count} price documents")

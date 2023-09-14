@@ -2,3 +2,4 @@ gql
 aiohttp
 requests
 pymongo
+atomicwrites

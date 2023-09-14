@@ -2,3 +2,4 @@ venv/
 .idea/
 cookies.json
 config.json
+recency.pickle

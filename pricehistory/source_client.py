@@ -9,17 +9,19 @@ from gql.transport.aiohttp import AIOHTTPTransport
 from .data.category_document import CategoryDocument
 from .data.price_container import PriceContainer
 from .data.price_document import PriceDocument
-from pricehistory.constants import PRODUCTS_QUERY, MAX_SLEEP_SECONDS, MIN_SLEEP_SECONDS
+from pricehistory.constants import PRODUCTS_QUERY, MAX_SLEEP_SECONDS, MIN_SLEEP_SECONDS, RECENCY_CATEGORY_COMPLETE
 from pricehistory.db_client import DBClient
 from .data.product_document import ProductDocument
+from .receny_util import RecencyUtil
 
 
 class SourceClient:
-    def __init__(self, api_url: str, store_id: str, categories: List[int], cookies: dict, db_client: DBClient):
+    def __init__(self, api_url: str, store_id: str, categories: List[int], cookies: dict, db_client: DBClient, recency_util: RecencyUtil):
         self.api_url = api_url
         self.store_id = store_id
         self.categories = categories
         self.db_client = db_client
+        self.recency_util = recency_util
 
         self.today = datetime.datetime.today()
 
@@ -91,15 +93,40 @@ class SourceClient:
         self._process_records(result["browseCategory"]["records"], category_id, category_display_name)
 
         if result["browseCategory"]["hasMoreRecords"]:
-            return result["browseCategory"]["nextCursor"]
+            # Save the cursor so that if the program crashes we can skip pages we already have done
+            next_cursor = result["browseCategory"]["nextCursor"]
+            self.recency_util.record_category_page_success(category_id, next_cursor)
+            return next_cursor
         else:
+            # No more pages, so log that the category is complete
+            self.recency_util.record_category_page_success(category_id, RECENCY_CATEGORY_COMPLETE)
             return None
 
-    def process_category(self, category_id: int):
-        after_cursor = self._fetch_category_page(category_id)
+    def _fetch_category_page_with_retry(self, category_id: int, after: str = None) -> Optional[str]:
+        for i in range(5):
+            try:
+                return self._fetch_category_page(category_id, after)
+            except Exception as e:
+                print(f"Exception fetching category page: {e}")
 
+        raise ValueError("Could not fetch page")
+
+    def process_category(self, category_id: int):
+        # See if we have already processed some pages in this category recently
+        after_cursor = self.recency_util.get_category_after_cursor(category_id)
+        if after_cursor == RECENCY_CATEGORY_COMPLETE:
+            print(f"Skipping category {category_id} as it is already complete")
+            return
+        else:
+            print(f"Starting with cursor {after_cursor} for category {category_id}")
+
+        # None means we have not completed the first page so grab that first
+        if after_cursor is None:
+            after_cursor = self._fetch_category_page_with_retry(category_id)
+
+        # Keep grabbing pages until we're done
         while after_cursor is not None:
-            after_cursor = self._fetch_category_page(category_id, after=after_cursor)
+            after_cursor = self._fetch_category_page_with_retry(category_id, after=after_cursor)
 
     def process_all_categories(self):
         for category in self.categories:

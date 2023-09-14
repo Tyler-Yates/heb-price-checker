@@ -1,6 +1,10 @@
 MIN_SLEEP_SECONDS = 1
 MAX_SLEEP_SECONDS = 8
 
+RECENCY_FILE_NAME = "recency.pickle"
+RECENCY_MINIMUM_AGE_DAYS = 5
+RECENCY_CATEGORY_COMPLETE = "*_*SKIP*_*"
+
 CATEGORIES_QUERY = """
     query {
         shopNavigation {
