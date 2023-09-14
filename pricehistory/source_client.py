@@ -109,7 +109,7 @@ class SourceClient:
             except Exception as e:
                 print(f"Exception fetching category page: {e}")
 
-        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!Skipping page!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+        raise ValueError("Failed to fetch page")
 
     def process_category(self, category_id: int):
         # See if we have already processed some pages in this category recently
