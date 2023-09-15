@@ -3,3 +3,5 @@ aiohttp
 requests
 pymongo
 atomicwrites
+playwright
+playwright-stealth
