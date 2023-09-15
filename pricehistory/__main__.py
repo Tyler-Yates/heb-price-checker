@@ -1,5 +1,7 @@
 import json
 
+import requests
+
 from pricehistory.constants import DB_CONNECTION_STRING
 from pricehistory.cookie_util import get_cookies
 from pricehistory.db_client import DBClient
@@ -17,6 +19,7 @@ def main():
         db_username = config_json["db_username"]
         db_password = config_json["db_password"]
         db_host = config_json["db_host"]
+        healthcheck_url = config_json["healthcheck_url"]
 
     db_client = DBClient(db_connection_string=DB_CONNECTION_STRING % (db_username, db_password, db_host))
 
@@ -34,6 +37,11 @@ def main():
         recency_util=recency_util,
     )
     source_client.process_all_categories()
+
+    print("Pinging healthcheck URL...")
+    response = requests.get(healthcheck_url)
+    response.raise_for_status()
+    print("Done!")
 
 
 if __name__ == "__main__":
