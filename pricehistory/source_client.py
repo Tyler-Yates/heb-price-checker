@@ -16,7 +16,15 @@ from .receny_util import RecencyUtil
 
 
 class SourceClient:
-    def __init__(self, api_url: str, store_id: str, categories: List[int], cookies: dict, db_client: DBClient, recency_util: RecencyUtil):
+    def __init__(
+        self,
+        api_url: str,
+        store_id: str,
+        categories: List[int],
+        cookies: dict,
+        db_client: DBClient,
+        recency_util: RecencyUtil,
+    ):
         self.api_url = api_url
         self.store_id = store_id
         self.categories = categories

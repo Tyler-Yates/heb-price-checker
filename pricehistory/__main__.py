@@ -23,7 +23,12 @@ def main():
     recency_util.clean_records()
 
     source_client = SourceClient(
-        api_url=api_url, store_id=store_id, categories=categories, cookies=cookies, db_client=db_client, recency_util=recency_util
+        api_url=api_url,
+        store_id=store_id,
+        categories=categories,
+        cookies=cookies,
+        db_client=db_client,
+        recency_util=recency_util,
     )
     source_client.process_all_categories()
 

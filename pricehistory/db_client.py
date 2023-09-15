@@ -4,6 +4,7 @@ from typing import List
 import pymongo
 from pymongo import MongoClient, UpdateOne
 from pymongo.collection import Collection
+from pymongo.operations import SearchIndexModel
 from pymongo.server_api import ServerApi
 
 from .data.category_document import CategoryDocument
@@ -34,6 +35,27 @@ class DBClient:
         self.prices_collection.create_index(
             [("product_id", pymongo.ASCENDING), ("start_date", pymongo.DESCENDING)], unique=False
         )
+
+        # TODO uncomment this when pymongo supports creating a search index
+        # Search index for string searching
+        # search_index_definition = {
+        #     "mappings": {
+        #         "dynamic": False,
+        #         "fields": {
+        #             "display_name": [
+        #                 {
+        #                     "foldDiacritics": True,
+        #                     "maxGrams": 6,
+        #                     "minGrams": 3,
+        #                     "tokenization": "nGram",
+        #                     "type": "autocomplete",
+        #                 }
+        #             ]
+        #         },
+        #     }
+        # }
+        # search_index_model = SearchIndexModel(name="default", definition=search_index_definition)
+        # self.products_collection.create_search_index(search_index_model)
 
     def save_product_prices(self, price_containers: List[PriceContainer], category_document: CategoryDocument):
         # Ensure we have a document for the category
