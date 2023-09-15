@@ -5,7 +5,7 @@ from typing import Dict, Tuple, Optional
 
 from atomicwrites import atomic_write
 
-from pricehistory.constants import RECENCY_FILE_NAME, RECENCY_MINIMUM_AGE_DAYS
+from pricehistory.constants import RECENCY_FILE_NAME, RECENCY_MINIMUM_AGE_HOURS
 
 
 class RecencyUtil:
@@ -32,12 +32,12 @@ class RecencyUtil:
         else:
             return None
 
-    def clean_records(self, age_in_days_to_clean=RECENCY_MINIMUM_AGE_DAYS):
+    def clean_records(self, age_in_hours_to_clean=RECENCY_MINIMUM_AGE_HOURS):
         categories_to_remove = []
 
         for category_id, information_tuple in self.recency_dict.items():
-            days_since_record = (datetime.now() - information_tuple[0]).days
-            if days_since_record >= age_in_days_to_clean:
+            hours_since_record = (datetime.now() - information_tuple[0]).seconds / 3600
+            if hours_since_record >= age_in_hours_to_clean:
                 categories_to_remove.append(category_id)
 
         for category_id in categories_to_remove:

@@ -145,10 +145,12 @@ class SourceClient:
         # None means we have not completed the first page so grab that first
         if after_cursor is None:
             after_cursor = self._fetch_category_page_with_retry(category_id)
+            self._wait_random_time()
 
         # Keep grabbing pages until we're done
         while after_cursor is not None:
             after_cursor = self._fetch_category_page_with_retry(category_id, after=after_cursor)
+            self._wait_random_time()
 
     def process_all_categories(self):
         for category in self.categories:

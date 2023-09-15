@@ -4,7 +4,7 @@ from typing import List
 import pymongo
 from pymongo import MongoClient, UpdateOne
 from pymongo.collection import Collection
-from pymongo.operations import SearchIndexModel
+from pymongo.operations import InsertOne
 from pymongo.server_api import ServerApi
 
 from .data.category_document import CategoryDocument
@@ -103,19 +103,15 @@ class DBClient:
                     continue
 
             print(f"Updating price for product {price_document.product_id}")
-            operation = UpdateOne(
-                filter={"product_id": price_document.product_id, "start_date": price_document.start_date},
-                update={"$set": dataclasses.asdict(price_document)},
-                upsert=True,
-            )
+            operation = InsertOne(dataclasses.asdict(price_document))
             operations.append(operation)
 
         if not operations:
-            print("Upserted 0 price documents")
+            print("Inserted 0 price documents")
             return
 
         result = self.prices_collection.bulk_write(operations)
-        print(f"Upserted {result.upserted_count} price documents")
+        print(f"Inserted {result.inserted_count} price documents")
 
     def _ensure_category_exists(self, category_document: CategoryDocument):
         self.categories_collection.update_one(
