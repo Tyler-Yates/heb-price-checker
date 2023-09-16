@@ -5,3 +5,5 @@ pymongo
 atomicwrites
 playwright
 playwright-stealth
+redis
+fakeredis
