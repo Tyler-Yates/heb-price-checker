@@ -7,6 +7,7 @@ import requests
 from pricehistory.constants import DB_CONNECTION_STRING
 from pricehistory.cookie_util import get_cookies
 from pricehistory.db_client import DBClient
+from pricehistory.logger_util import LoggerUtil
 from pricehistory.receny_util import RecencyUtil
 from pricehistory.source_client import SourceClient
 
@@ -15,10 +16,8 @@ logging.basicConfig(level=logging.INFO)
 logging.getLogger("engineio.server").setLevel(logging.WARNING)
 logging.getLogger("socketio.server").setLevel(logging.WARNING)
 
-LOG = logging.getLogger(__name__)
 
-
-def main():
+def main(logger_util: LoggerUtil):
     with open("config.json") as config_file:
         config_json = json.load(config_file)
         api_url = config_json["apiUrl"]
@@ -34,14 +33,16 @@ def main():
     if data_cache_url:
         cache = redis.Redis.from_url(data_cache_url)
         cache.ping()
-        LOG.info("Using Redis cache for data")
+        logger_util.write("Using Redis cache for data")
     else:
         cache = None
 
     db_connection_string = DB_CONNECTION_STRING % (db_username, db_password, db_host)
-    db_client = DBClient(db_connection_string=db_connection_string, cache=cache)
+    db_client = DBClient(db_connection_string=db_connection_string, logger_util=logger_util, cache=cache)
 
+    logger_util.write("Fetching cookies...")
     cookies = get_cookies(cookie_url)
+    logger_util.write("Done fetching cookies")
 
     recency_util = RecencyUtil()
     recency_util.clean_records()
@@ -53,14 +54,16 @@ def main():
         cookies=cookies,
         db_client=db_client,
         recency_util=recency_util,
+        logger_util=logger_util,
     )
     source_client.process_all_categories()
 
-    print("Pinging healthcheck URL...")
+    logger_util.write("Pinging healthcheck URL...")
     response = requests.get(healthcheck_url)
     response.raise_for_status()
-    print("Done!")
+    logger_util.write("Done!")
 
 
 if __name__ == "__main__":
-    main()
+    with LoggerUtil() as logger:
+        main(logger)

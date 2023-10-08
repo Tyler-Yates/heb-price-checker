@@ -18,13 +18,11 @@ from .constants import (
 )
 from .data.category_document import CategoryDocument
 from .data.price_container import PriceContainer
-
-
-LOG = logging.getLogger(__name__)
+from .logger_util import LoggerUtil
 
 
 class DBClient:
-    def __init__(self, db_connection_string: str, cache: redis.Redis = None):
+    def __init__(self, db_connection_string: str, logger_util: LoggerUtil, cache: redis.Redis = None):
         # If no cache is given, spin up a fake one
         if cache is None:
             self.cache = fakeredis.FakeStrictRedis(version=REDIS_VERSION)
@@ -32,13 +30,15 @@ class DBClient:
             self.cache = cache
 
         self.client = MongoClient(db_connection_string, server_api=ServerApi("1"))
+        
+        self.logger_util = logger_util
 
         # Send a ping to confirm a successful connection
         try:
             self.client.admin.command("ping")
-            LOG.info("Successfully connected to database!")
+            self.logger_util.write("Successfully connected to database!")
         except Exception:
-            LOG.exception("Error connecting to database!")
+            self.logger_util.exception("Error connecting to database!")
 
         # Collections
         self.database = self.client["price_history"]
@@ -98,12 +98,12 @@ class DBClient:
             )
 
         if not operations:
-            LOG.info("Upserted 0 product documents")
+            self.logger_util.write("Upserted 0 product documents")
             return
 
         result = self.products_collection.bulk_write(operations)
         num_documents_changed = result.upserted_count + result.modified_count
-        LOG.info(f"Upserted/Modified {num_documents_changed} product documents")
+        self.logger_util.write(f"Upserted/Modified {num_documents_changed} product documents")
 
         if num_documents_changed > 0:
             # We should reset this category's cache to show the new product data
@@ -130,21 +130,21 @@ class DBClient:
             if most_recent_price_document:
                 most_recent_price = most_recent_price_document["price_cents"]
                 if most_recent_price == price_document.price_cents:
-                    LOG.info(f"Skipping update for product {product_id} as the price is unchanged")
+                    self.logger_util.write(f"Skipping update for product {product_id} as the price is unchanged")
                     continue
                 else:
-                    LOG.info(f"Updating price for product {product_id}")
+                    self.logger_util.write(f"Updating price for product {product_id}")
             else:
-                LOG.info(f"New product found: {product_id}")
+                self.logger_util.write(f"New product found: {product_id}")
 
             operation = InsertOne(dataclasses.asdict(price_document))
             operations.append(operation)
 
         if operations:
             result = self.prices_collection.bulk_write(operations)
-            LOG.info(f"Inserted {result.inserted_count} price documents")
+            self.logger_util.write(f"Inserted {result.inserted_count} price documents")
         else:
-            LOG.info("Inserted 0 price documents")
+            self.logger_util.write("Inserted 0 price documents")
 
         # We want to wait until the database update happens before we unset the cache entries for any new products or
         # products that changed prices.

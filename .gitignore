@@ -3,3 +3,4 @@ venv/
 cookies.json
 config.json
 recency.pickle
+logs/

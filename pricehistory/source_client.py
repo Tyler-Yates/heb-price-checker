@@ -12,6 +12,7 @@ from .data.price_document import PriceDocument
 from pricehistory.constants import PRODUCTS_QUERY, MAX_SLEEP_SECONDS, MIN_SLEEP_SECONDS, RECENCY_CATEGORY_COMPLETE
 from pricehistory.db_client import DBClient
 from .data.product_document import ProductDocument
+from .logger_util import LoggerUtil
 from .receny_util import RecencyUtil
 
 
@@ -24,12 +25,14 @@ class SourceClient:
         cookies: dict,
         db_client: DBClient,
         recency_util: RecencyUtil,
+        logger_util: LoggerUtil,
     ):
         self.api_url = api_url
         self.store_id = store_id
         self.categories = categories
         self.db_client = db_client
         self.recency_util = recency_util
+        self.logger_util = logger_util
 
         self.today = datetime.datetime.today()
 
@@ -129,7 +132,7 @@ class SourceClient:
             try:
                 return self._fetch_category_page(category_id, after)
             except Exception as e:
-                print(f"Exception fetching category page: {e}")
+                self.logger_util.write(f"Exception fetching category page: {e}")
 
         raise ValueError("Failed to fetch page")
 
@@ -137,10 +140,10 @@ class SourceClient:
         # See if we have already processed some pages in this category recently
         after_cursor = self.recency_util.get_category_after_cursor(category_id)
         if after_cursor == RECENCY_CATEGORY_COMPLETE:
-            print(f"Skipping category {category_id} as it is already complete")
+            self.logger_util.write(f"Skipping category {category_id} as it is already complete")
             return
         else:
-            print(f"Starting with cursor {after_cursor} for category {category_id}")
+            self.logger_util.write(f"Starting with cursor {after_cursor} for category {category_id}")
 
         # None means we have not completed the first page so grab that first
         if after_cursor is None:
@@ -156,8 +159,7 @@ class SourceClient:
         for category in self.categories:
             self.process_category(category)
 
-    @staticmethod
-    def _wait_random_time():
+    def _wait_random_time(self):
         seconds_to_sleep = random.randint(MIN_SLEEP_SECONDS, MAX_SLEEP_SECONDS)
-        print(f"Sleeping for {seconds_to_sleep} second(s)")
+        self.logger_util.write(f"Sleeping for {seconds_to_sleep} second(s)")
         sleep(seconds_to_sleep)
